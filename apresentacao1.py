@@ -108,3 +108,31 @@ df2.createOrReplaceTempView('decisao')
 # COMMAND ----------
 
 display(spark.sql('select * from decisao'))
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC # Escrevendo dados em um repositório externo
+
+# COMMAND ----------
+
+df = spark.range(20)
+
+
+# COMMAND ----------
+
+filePathTab = filePath + "test.delta"
+
+# COMMAND ----------
+
+df.write.format("delta").mode('overwrite').save(filePathTab)
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC list 'abfss://tables@externaltablesdb5.dfs.core.windows.net'
+
+# COMMAND ----------
+
+filePath = "abfss://tables@externaltablesdb5.dfs.core.windows.net/"
+display(dbutils.fs.ls(filePath))
