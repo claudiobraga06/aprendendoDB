@@ -1,0 +1,182 @@
+# Databricks notebook source
+# Lendo um CSV do disco
+
+# COMMAND ----------
+
+# Mostrando um conteúdo de um diretório do DataBricks file system
+filePath = "dbfs:/mnt/training/ecommerce/products"
+display(dbutils.fs.ls(filePath))
+
+# COMMAND ----------
+
+# MAGIC %fs
+# MAGIC ls /mnt/training/ecommerce/products
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC CREATE TABLE IF NOT EXISTS products USING parquet OPTIONS (path "/mnt/training/ecommerce/products/products.parquet");
+# MAGIC CREATE TABLE IF NOT EXISTS events USING parquet OPTIONS (path "/mnt/training/ecommerce/events/events.parquet");
+# MAGIC select * from events
+
+# COMMAND ----------
+
+# Lendo no formato parquet
+filePath = "dbfs:/mnt/training/airbnb/sf-listings/sf-listings-2018-12-06-clean-100p.parquet/"
+df = spark.read.format("parquet").load(filePath)
+
+# COMMAND ----------
+
+# Lenodo no formato CSV
+filePath = "dbfs:/mnt/training/ecommerce/products/products.csv"
+dfCSV= spark.read.csv(filePath,header=True,inferSchema=True)
+display(dfCSV)
+
+
+# COMMAND ----------
+
+# OBS: Você pode definir um schema
+ddlSchema ="item string, name string,price double"
+dfCSV= spark.read.csv(filePath,header=True,schema=ddlSchema)
+display(dfCSV)
+
+# COMMAND ----------
+
+filePath = "dbfs:/mnt/training/ecommerce/products/products.csv"
+display(dbutils.fs.ls(filePath))
+
+# COMMAND ----------
+
+# Lista os nomes das colunas
+df.columns
+
+# COMMAND ----------
+
+# Mostrando os tipos de dados
+df.printSchema()
+
+# COMMAND ----------
+
+# Estatísticas básicas. Obs: describe() também fornece estatísticas, exceto os quartis 
+display(df.summary())
+
+# COMMAND ----------
+
+# mostrando o DF
+display(df)
+
+# COMMAND ----------
+
+# Também pode fazer pelo SQL, mas antes precisa registrar a tabela
+df.createOrReplaceTempView("event2")
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC select * from event2
+
+# COMMAND ----------
+
+# Importando bibliotecas importantes
+from pyspark.sql.functions import col, translate,lit,when,avg
+
+# COMMAND ----------
+
+# Selecionando apenas algumas colunas
+df2 = df.select("price","bedrooms","beds")
+
+# COMMAND ----------
+
+# Crianddo uma nova coluna
+df3 = df2.withColumn("duasVezes",col("price")*2)
+
+# COMMAND ----------
+
+# Atualizando uma coluna numéria e alfanumérica
+# Mudando o tipo de uma variável
+df4 = df3.withColumn("duasVezes",col("duasVezes")+100).withColumn("fixo",lit("22$"))
+df4 = df4.withColumn("fixo2",translate(col("fixo"),"$","").cast("double"))
+
+# COMMAND ----------
+
+#Atribuindo um valor conforme outro valor
+df5 = df4.withColumn("comprar",when(col("price")>100, lit("caro")).when(col("price")<50,lit("barato")).otherwise(lit("so so")))
+
+# COMMAND ----------
+
+df5.printSchema()
+
+# COMMAND ----------
+
+# Filtrar pelo conteúdo de uma colunas
+df6 = df5.filter(col("comprar") =="caro").cache()
+
+# COMMAND ----------
+
+# Agrupando os resultados e exibindo em ordem decrescente
+display(df.groupby("bedrooms").avg("price").orderBy(col("avg(price)").desc()).select("bedrooms","avg(price)"))
+
+# COMMAND ----------
+
+display(df)
+
+# COMMAND ----------
+
+dfInfer = df.select("property_type","accommodates","price")
+
+# COMMAND ----------
+
+# Analisando a variável categórica
+display(dfInfer.groupBy("property_type").count().orderBy(col("count").desc()) )
+
+# COMMAND ----------
+
+display(dfInfer.groupBy("accommodates").count().orderBy(col("count").desc()))
+
+# COMMAND ----------
+
+# Analisando a variável quantitativa
+display(dfInfer.select("price"))
+
+# COMMAND ----------
+
+# Retirando o elemento maiores que 3000
+dfInfer2 = dfInfer.filter(col("price")<3000).cache()
+
+# COMMAND ----------
+
+display(dfInfer2.select("price"))
+
+# COMMAND ----------
+
+display(dfInfer2.select("accommodates","price").groupBy("accommodates").avg("price").orderBy("accommodates"))
+
+# COMMAND ----------
+
+# Recuperar a média dos preços
+mean = dfInfer2.select(avg("price")).first()[0]
+medianPrice = dfInfer2.approxQuantile("price",probabilities=[0.5],relativeError = 0.01)[0]
+print (f" média = {mean:.2f}  mediana = {medianPrice:.2f}")
+
+# COMMAND ----------
+
+display(dfInfer2.summary())
+
+# COMMAND ----------
+
+# Trazendo dados para o Python
+todaTabela = dfInfer2.collect()
+primeirasLinhas = dfInfer2.take(10)
+
+# COMMAND ----------
+
+len(todaTabela)
+
+# COMMAND ----------
+
+display(todaTabela)
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC NOVA CELULA
