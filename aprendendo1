@@ -1,6 +1,7 @@
 # Databricks notebook source
 # Lendo um CSV do disco
 
+
 # COMMAND ----------
 
 # Mostrando um conteúdo de um diretório do DataBricks file system
